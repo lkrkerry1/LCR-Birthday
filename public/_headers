@@ -1,0 +1,5 @@
+# Cloudflare Pages 会在响应里带上这些头。
+# noindex 只是"请别收录"，不是访问控制（真要挡住人要上 Cloudflare Access）。
+/*
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer

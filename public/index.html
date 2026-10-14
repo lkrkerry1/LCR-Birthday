@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <title>解密 · 生日计划</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="glow" aria-hidden="true"></div>
+
+    <div class="page">
+      <header class="head">
+        <h1 class="head-title" id="site-title"></h1>
+        <p class="head-sub" id="site-subtitle"></p>
+        <p class="head-intro" id="site-intro"></p>
+      </header>
+
+      <main class="view" id="view"></main>
+
+      <footer class="foot">
+        <span class="foot-note" id="foot-note"></span>
+        <button class="link-btn" id="copy-link" type="button" hidden>复制本页链接</button>
+      </footer>
+    </div>
+
+    <template id="tpl-level">
+      <section class="card card-level">
+        <div class="row-between">
+          <span class="chip" data-el="step"></span>
+          <span class="chip chip-warn" data-el="demo" hidden>示例关卡（待替换）</span>
+        </div>
+        <h2 class="level-title" data-el="label"></h2>
+        <p class="face" data-el="face"></p>
+        <div class="cipher">
+          <div class="cipher-bar">
+            <span class="cipher-tag">密文</span>
+            <button class="ghost-btn" type="button" data-el="copy">复制</button>
+          </div>
+          <code class="cipher-text" data-el="cipher"></code>
+        </div>
+        <form class="answer-form" data-el="form" autocomplete="off" novalidate>
+          <label class="visually-hidden" for="answer-input">你的答案</label>
+          <input
+            class="answer-input"
+            id="answer-input"
+            data-el="input"
+            type="text"
+            name="answer"
+            placeholder="把你解出的答案填在这里"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="go"
+          />
+          <button class="primary-btn" type="submit">开门</button>
+        </form>
+        <p class="msg" data-el="msg" role="status" aria-live="polite"></p>
+      </section>
+    </template>
+
+    <template id="tpl-transition">
+      <section class="card card-transition" role="status" aria-live="polite">
+        <p class="trans-kicker" data-el="kicker"></p>
+        <code class="trans-key" data-el="key"></code>
+        <p class="trans-hint">正在打开新页面…</p>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </section>
+    </template>
+
+    <template id="tpl-locked">
+      <section class="card card-locked">
+        <h2 class="locked-title" data-el="title"></h2>
+        <p class="face" data-el="hint"></p>
+        <form class="answer-form" data-el="form" autocomplete="off" novalidate>
+          <input
+            class="answer-input"
+            data-el="input"
+            type="text"
+            name="key"
+            placeholder="把密钥整串粘进来"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="go"
+          />
+          <button class="primary-btn" type="submit">试试</button>
+        </form>
+        <p class="msg" data-el="msg" role="status" aria-live="polite"></p>
+      </section>
+    </template>
+
+    <template id="tpl-reveal">
+      <article class="card card-letter">
+        <h2 class="letter-title" data-el="title"></h2>
+        <div class="letter-body" data-el="body"></div>
+        <p class="letter-sign" data-el="sign"></p>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

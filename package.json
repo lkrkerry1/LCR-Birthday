@@ -1,0 +1,12 @@
+{
+  "name": "birthday-decrypt",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "生日解密平台：零构建静态站，答案即密钥，部署到 Cloudflare Pages",
+  "scripts": {
+    "dev": "node tools/serve.mjs",
+    "check": "node tools/check.mjs",
+    "test": "node tools/levels-utils.test.mjs && node tools/cipher.test.mjs && node tools/page.test.mjs"
+  }
+}
