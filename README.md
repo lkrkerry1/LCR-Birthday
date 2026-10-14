@@ -34,6 +34,7 @@ tools/
   cipher.mjs            生成/回解密文
   url.mjs               把答案变成可分享的链接
   check.mjs             配置自检 + 整条链路空跑
+  verify-deploy.mjs     部署后验收：一条命令测线上所有关键路径
   *.test.mjs            单元测试
 content/AUTHORING.md    怎么写新关卡
 wrangler.jsonc          Cloudflare Workers 部署配置（部署目录 + SPA 回退开关）
@@ -150,14 +151,22 @@ git log -1 --format='%an <%ae>'      # → lkrkerry1 <152617246+lkrkerry1@users.
 gh repo edit lkrkerry1/LCR-Birthday --visibility private --accept-visibility-change-consequences
 ```
 
-部署后核对五件事：
+部署后验收——一条命令跑完：
 
-1. `/` 显示第一关，密文、谜面、输入框都在；
-2. 直接打开 `/狂奔在沙漠中暴雨下` 能进第二关（带不带末尾斜杠、用不用百分号编码都要能进）；
-3. 随便打开 `/abcd/` 显示"这串密钥打不开任何一道门"，而不是 Cloudflare 的 404 页
-   —— 这一条最能说明回退配好了；
-4. 在第一关输入答案，能跳到 `/狂奔在沙漠中暴雨下/` 并显示第二关；
-5. 响应头里有 `x-robots-tag: noindex`（`_headers` 生效）。
+```bash
+node tools/verify-deploy.mjs https://你的域名
+```
+
+它会把下面这些逐条测出来（本地 `http://127.0.0.1:8788` 也能跑，只有 `_headers` 那条会变成提醒）：
+
+1. `/` 返回站点外壳，不是 Cloudflare 错误页；
+2. `app.js` / `levels.js` / `styles.css` / `shared/levels-utils.js` / `favicon.svg` / `robots.txt` 都能取到且 MIME 正确；
+3. **密钥路径**（`/狂奔在沙漠中暴雨下`，带与不带尾斜杠）都能打开；
+4. **未知路径返回 200 + 外壳**（SPA 回退生效）——这一条不通过，"密钥即网址" 就断了；
+5. 响应头有 `x-robots-tag: noindex`；
+6. 线上 `levels.js` 里没有泄露视频号（`BV...`）。
+
+通过后，命令会直接把该发给寿星的链接列出来。
 
 想真正做访问控制（现在不是）再上 Cloudflare Access。
 
@@ -182,10 +191,17 @@ gh repo edit lkrkerry1/LCR-Birthday --visibility private --accept-visibility-cha
 
 ### 操作步骤
 
+本项目用的域名：**`lcr-birthday.asia`**（阿里云注册）。
+
+> 阿里云域名在**实名认证通过前会被 `clientHold`**：注册局不发布任何解析记录，
+> 表现为 `NS`/`A` 全是 NXDOMAIN。这一步没过，改 NS 也没意义，先去实名认证。
+
 1. 买域名。`.com` 最稳；`.top` / `.xyz` / `.site` 首年便宜但续费贵。
    国内注册商（阿里云/腾讯云）需要**实名认证**（约 1 天，注意这不是备案）；
    国外注册商（Porkbun、NameSilo）不需要实名，但要有外币卡/PayPal。
    别买 `.cn`（实名 + 国内注册局额外麻烦）。
+   （`.asia` 是否在工信部可备案名单内，本项目还没确认过；哪天真要走备案会再核实，
+   不影响绑 Cloudflare 这条路径。）
 2. Cloudflare Dashboard → **Add a site** → 输入域名 → 选 **Free** 计划 → 记下分配的两条 nameserver。
 3. 回注册商把 DNS 服务器改成那两条，等 Cloudflare 上显示 **Active**（几分钟到几小时）。
 4. Cloudflare → **Workers & Pages** → `lcr-birthday` → **Settings** → **Domains & Routes** →
