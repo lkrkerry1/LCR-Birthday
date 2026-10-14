@@ -6,3 +6,6 @@ Thumbs.db
 *.log
 lcr/
 bad_case.*
+# 第一关的题目数据与标准答案：绝对不能进公开仓库
+1.in
+1.out
