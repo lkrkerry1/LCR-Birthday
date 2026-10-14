@@ -27,6 +27,7 @@ import {
 import { levels, reveal, site } from '../public/levels.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
+const ROOT_DIR = fileURLToPath(new URL('../', import.meta.url));
 
 /** 这些名字属于站点自己的文件，不能被拿来当密钥网址。 */
 const RESERVED_NAMES = [
@@ -58,6 +59,18 @@ const REQUIRED_FILES = [
 const PLACEHOLDER_PATTERN = /【示例|待替换|待你填写|示例关卡|DEMO-/;
 
 const isText = (value) => typeof value === 'string' && value.trim() !== '';
+
+/** 极简 JSONC 解析：去掉注释与尾随逗号。这份配置是我们自己写的，够用即可。 */
+function parseJsonc(text) {
+  try {
+    const withoutComments = text
+      .replace(/^\s*\/\/.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    return JSON.parse(withoutComments.replace(/,(\s*[}\]])/g, '$1'));
+  } catch {
+    return null;
+  }
+}
 
 export function check({ allowDemo = false } = {}) {
   const errors = [];
@@ -224,6 +237,35 @@ export function check({ allowDemo = false } = {}) {
   const headersFile = join(PUBLIC_DIR, '_headers');
   if (existsSync(headersFile) && !/noindex/i.test(readFileSync(headersFile, 'utf8'))) {
     warn('public/_headers 里没有 noindex，搜索引擎可能会收录这个站点');
+  }
+
+  // ── Cloudflare 部署配置 ────────────────────────────────────
+  // 密钥网址靠"找不到文件就返回 index.html"才行得通：
+  // Workers 必须显式打开 SPA 回退，Pages 则靠"顶层没有 404.html"。
+  const wranglerFile = join(ROOT_DIR, 'wrangler.jsonc');
+  if (!existsSync(wranglerFile)) {
+    warn('没有 wrangler.jsonc：走 Workers 部署时密钥网址会全部 404（走 Pages 则不需要这个文件）');
+  } else {
+    const config = parseJsonc(readFileSync(wranglerFile, 'utf8'));
+    if (config === null) {
+      error('wrangler.jsonc 解析失败，检查注释或逗号');
+    } else {
+      const directory = String(config.assets?.directory ?? '').replace(/^\.\//, '').replace(/\/+$/, '');
+      if (directory !== 'public') {
+        error(`wrangler.jsonc 的 assets.directory 应指向 public，现在是「${config.assets?.directory ?? '（缺）'}」`);
+      }
+      if (config.assets?.not_found_handling !== 'single-page-application') {
+        error('wrangler.jsonc 缺少 assets.not_found_handling = "single-page-application"，密钥网址会全部 404');
+      }
+      if (!isText(config.name)) {
+        error('wrangler.jsonc 缺少 name');
+      } else {
+        notes.push(`wrangler.jsonc 的 name 是「${config.name}」，必须与 Cloudflare Dashboard 里的 Project name 完全一致`);
+      }
+      if (config.pages_build_output_dir !== undefined) {
+        error('wrangler.jsonc 里出现了 pages_build_output_dir：Workers 与 Pages 的配置不能混用');
+      }
+    }
   }
 
   // ── 示例内容 ───────────────────────────────────────────────

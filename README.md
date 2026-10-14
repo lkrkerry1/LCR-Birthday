@@ -30,12 +30,14 @@ public/                 ← 部署出去的就是这个目录
   shared/levels-utils.js  归一化与网址派生（网页和 tools/ 共用同一份实现）
   favicon.svg  robots.txt  _headers
 tools/
-  serve.mjs             本地预览服务器（行为对齐 Pages 的 SPA 回退）
+  serve.mjs             本地预览服务器（行为对齐 Cloudflare 的 SPA 回退）
   cipher.mjs            生成/回解密文
   url.mjs               把答案变成可分享的链接
   check.mjs             配置自检 + 整条链路空跑
   *.test.mjs            单元测试
 content/AUTHORING.md    怎么写新关卡
+wrangler.jsonc          Cloudflare Workers 部署配置（部署目录 + SPA 回退开关）
+.gitattributes          统一换行符，避免跨平台 diff 噪音
 ```
 
 ## 本地预览
@@ -50,7 +52,7 @@ node tools/serve.mjs --port 9000
 ```bash
 node tools/check.mjs --allow-demo   # 还有示例内容时用这个
 node tools/check.mjs                # 内容都写完、准备发布时用这个（有示例内容就报错）
-node tools/levels-utils.test.mjs && node tools/cipher.test.mjs   # 或 pnpm test
+node tools/levels-utils.test.mjs && node tools/cipher.test.mjs && node tools/page.test.mjs   # 或 pnpm test
 ```
 
 `check.mjs` 会把整条链路空跑一遍，例如现在输出：
@@ -83,34 +85,53 @@ node tools/url.mjs "狂奔在沙漠中暴雨下" --host https://你的域名
 
 `--text` 不写就从标准输入读，方便直接粘一段中文。
 
-## 部署到 Cloudflare Pages
+## 部署到 Cloudflare
 
-**只要记住一件事：`public/` 里不要放 `404.html`。**
-Cloudflare Pages 在顶层没有 `404.html` 时会按单页应用处理：任何没有对应静态文件的路径，
-都以 200 返回 `/` 的内容。这正是 `主域名/狂奔在沙漠中暴雨下` 能直接打开、刷新、分享的原因；
-一旦放了 `404.html`，所有密钥网址都会变成 404。也**不需要** `_redirects`
-（`/* /index.html 200` 这类重写会把 `app.js` 一起吃掉）。
+这个站是纯静态的，Cloudflare 的两条路都能跑：**Workers（静态资源）** 和 **Pages**。
+本项目当前走的是 **Workers + Workers Builds**，配置已经写进 `wrangler.jsonc`。
 
-（依据：[Serving Pages · Cloudflare Docs](https://developers.cloudflare.com/pages/configuration/serving-pages/)）
+### 关键：密钥网址靠"回退"才能打开
 
-方式一 · 直接上传（最省事）：
+`主域名/狂奔在沙漠中暴雨下` 这个路径在磁盘上**没有对应文件**，靠的是"找不到文件就返回
+`index.html`"的兜底行为。两个平台的开启方式**不一样**，少哪一边都会让所有密钥链接变成 404：
 
-```bash
-pnpm dlx wrangler pages deploy public
-# 或者在 Dashboard 里新建 Pages 项目，把 public 目录拖进去
-```
+| 平台 | 怎么开 | 写在哪 |
+|---|---|---|
+| **Workers**（现在用的） | 必须**显式**声明 `assets.not_found_handling: "single-page-application"` | `wrangler.jsonc`，已配好，别删 |
+| **Pages**（备选） | 顶层**不要**放 `404.html`，Pages 会自动按单页应用处理 | 别新建 `public/404.html` 即可 |
 
-方式二 · 连接 Git 仓库（推荐，本仓库已经建好）：
+另外**不需要** `_redirects`（`/* /index.html 200` 这类重写会把 `app.js` 一起吃掉）。
 
-仓库地址：<https://github.com/lkrkerry1/LCR-Birthday>（当前是 **public**，见下面的取舍）
+（依据：[Workers SPA 路由](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/) · [Serving Pages](https://developers.cloudflare.com/pages/configuration/serving-pages/)）
 
-在 Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git，选这个仓库后填：
+### 方式一 · Workers（本项目现在用的）
+
+Dashboard → Workers & Pages → **Create application** → **Import a repository** → 选
+<https://github.com/lkrkerry1/LCR-Birthday>，然后照下表填：
+
+| 字段 | 填什么 |
+|---|---|
+| Project name | `lcr-birthday`（**必须与 `wrangler.jsonc` 里的 `name` 一字不差**，否则构建会以 "Worker name requirement" 失败） |
+| Build command | **留空**（这个站没有构建步骤） |
+| Deploy command | `npx wrangler deploy`（保持默认） |
+
+剩下的事交给仓库里的 `wrangler.jsonc`：它声明部署目录 `./public`、打开 SPA 回退、
+并把兼容日期定为 `2026-10-14`。`public/_headers`（noindex）和 `public/robots.txt`
+在 Workers 静态资源里同样生效。
+
+部署完网址形如 `https://lcr-birthday.<你的子域>.workers.dev`，之后每次 `git push` 到 `main`
+都会自动重新部署——改 `public/levels.js` 就是改关卡内容。
+
+### 方式二 · Pages（备选）
+
+Dashboard → Create application → **Pages** → Connect to Git，选同一个仓库：
 
 - Framework preset：`None`
-- Build command：**留空**
+- Build command：**留空**（官方说法：没有构建步骤就留空）
 - Build output directory：`public`
 
-之后每次 `git push` 到 `main` 都会自动重新部署，改 `public/levels.js` 就是改关卡内容。
+Pages 项目和 Workers 项目是两套东西，**同一时间只走一条**；走 Pages 时**不要**加
+`wrangler.jsonc`（Pages 读的是 `pages_build_output_dir`，两边字段不通用，混在一起会校验失败）。
 
 提交署名已经在仓库里设好了（只对这个仓库生效，不动你的全局配置）：
 
@@ -122,18 +143,20 @@ git log -1 --format='%an <%ae>'      # → lkrkerry1 <152617246+lkrkerry1@users.
 `http.sslBackend=openssl`（这里的 schannel 会报 `SEC_E_NO_CREDENTIALS`）和
 `credential.interactive=false`（避免弹出凭据窗口卡住命令行）。
 
-想把这个仓库改成私有（Cloudflare Pages 连私有仓库完全没问题）：
+想把这个仓库改成私有（Workers 和 Pages 都支持私有仓库）：
 
 ```bash
 gh repo edit lkrkerry1/LCR-Birthday --visibility private --accept-visibility-change-consequences
 ```
 
-部署后核对四件事：
+部署后核对五件事：
 
-1. `/` 显示第一关；
-2. 直接打开 `/狂奔在沙漠中暴雨下` 能进第二关（无尾斜杠也要能进）；
-3. 随便打开 `/abcd/` 显示"这串密钥打不开任何一道门"，而不是 Cloudflare 的 404 页；
-4. 响应头里有 `x-robots-tag: noindex`（`_headers` 生效）。
+1. `/` 显示第一关，密文、谜面、输入框都在；
+2. 直接打开 `/狂奔在沙漠中暴雨下` 能进第二关（带不带末尾斜杠、用不用百分号编码都要能进）；
+3. 随便打开 `/abcd/` 显示"这串密钥打不开任何一道门"，而不是 Cloudflare 的 404 页
+   —— 这一条最能说明回退配好了；
+4. 在第一关输入答案，能跳到 `/狂奔在沙漠中暴雨下/` 并显示第二关；
+5. 响应头里有 `x-robots-tag: noindex`（`_headers` 生效）。
 
 想真正做访问控制（现在不是）再上 Cloudflare Access。
 

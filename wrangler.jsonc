@@ -1,0 +1,24 @@
+{
+  // Cloudflare Workers 静态站点配置。
+  // Workers Builds 里那行 Deploy command 就保持默认 `npx wrangler deploy`，读的就是这份文件。
+  //
+  // name 必须和 Dashboard 里的 Project name 完全一致（现在是 lcr-birthday），
+  // 否则构建会以 "Worker name requirement" 失败。
+  "name": "lcr-birthday",
+
+  // 兼容日期：用创建项目当天的日期。改了它会改变 Workers 运行时的行为，别随手改。
+  "compatibility_date": "2026-10-14",
+
+  "assets": {
+    // 部署目录：仓库里的 public/，和本地 node tools/serve.mjs 看到的是同一批文件。
+    "directory": "./public",
+
+    // 关键：Pages 会自动猜是不是单页应用，Workers 必须显式声明。
+    // 设为 single-page-application 后，没有对应静态文件的路径会以 200 返回 /index.html，
+    // 所以 /狂奔在沙漠中暴雨下 这种"密钥网址"才能直接打开、刷新、分享。
+    // 漏掉这一行，所有密钥链接都会变成 404。
+    "not_found_handling": "single-page-application"
+  }
+
+  // 这个站没有后端脚本，所以不写 "main"，也不写 assets.binding（binding 只有存在 main 时才合法）。
+}
