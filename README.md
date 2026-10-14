@@ -119,7 +119,8 @@ Dashboard → Workers & Pages → **Create application** → **Import a reposito
 并把兼容日期定为 `2026-10-14`。`public/_headers`（noindex）和 `public/robots.txt`
 在 Workers 静态资源里同样生效。
 
-部署完网址形如 `https://lcr-birthday.<你的子域>.workers.dev`，之后每次 `git push` 到 `main`
+部署完网址形如 `https://lcr-birthday.<你的子域>.workers.dev`——**但这个域名在国内无代理时打不开**，
+必须先绑自己的域名，见下面的「国内访问」一节。之后每次 `git push` 到 `main`
 都会自动重新部署——改 `public/levels.js` 就是改关卡内容。
 
 ### 方式二 · Pages（备选）
@@ -159,6 +160,52 @@ gh repo edit lkrkerry1/LCR-Birthday --visibility private --accept-visibility-cha
 5. 响应头里有 `x-robots-tag: noindex`（`_headers` 生效）。
 
 想真正做访问控制（现在不是）再上 Cloudflare Access。
+
+## 国内访问：为什么要绑自己的域名
+
+无代理直连实测（2026-10-14，同一台机器）：
+
+| 目标 | 结果 |
+|---|---|
+| `https://lcr-birthday.lkrkerry.workers.dev/` | **timeout** |
+| `developers.cloudflare.com` | 200，0.16s |
+| `www.cloudflare.com` | 200，0.16s |
+| `dash.cloudflare.com` | 403（未登录，正常），0.18s |
+
+同一个 Cloudflare IP 段，Cloudflare 自家域名秒开，`*.workers.dev` 却连不上——
+被阻断的是**共享域名**（`*.workers.dev`、`*.pages.dev` 在国内属于常年阻断或极不稳的那一类），
+不是 Cloudflare 的网络。由此：
+
+- **换成 Pages 没用**，`*.pages.dev` 一样打不开；
+- **绑一个自己的域名**，走的还是同一批 Cloudflare 节点，国内大概率能开
+  （但**不保证 100%**，速度也一般；要根治就得换国内云 + 备案）。
+
+### 操作步骤
+
+1. 买域名。`.com` 最稳；`.top` / `.xyz` / `.site` 首年便宜但续费贵。
+   国内注册商（阿里云/腾讯云）需要**实名认证**（约 1 天，注意这不是备案）；
+   国外注册商（Porkbun、NameSilo）不需要实名，但要有外币卡/PayPal。
+   别买 `.cn`（实名 + 国内注册局额外麻烦）。
+2. Cloudflare Dashboard → **Add a site** → 输入域名 → 选 **Free** 计划 → 记下分配的两条 nameserver。
+3. 回注册商把 DNS 服务器改成那两条，等 Cloudflare 上显示 **Active**（几分钟到几小时）。
+4. Cloudflare → **Workers & Pages** → `lcr-birthday` → **Settings** → **Domains & Routes** →
+   **Add** → **Custom Domain** → 填顶点域名 `你的域名`（或 `lcr-birthday.你的域名`）。
+   Cloudflare 会自动建 DNS 记录并签发证书，不用手工加 A 记录。
+5. 之后密钥链接就是 `https://你的域名/狂奔在沙漠中暴雨下`，用工具生成可分享链接：
+
+```bash
+node tools/url.mjs "狂奔在沙漠中暴雨下" --host https://你的域名
+```
+
+**不需要备案**：备案只针对**境内**服务器与境内容量。域名绑到 Cloudflare（境外节点）不需要；
+哪天改成国内云（腾讯云 EdgeOne、阿里云 OSS/CDN）就必须先备案，默认域名当网站也会被云厂商强制下载。
+
+### 绑好之后怎么验证
+
+1. 手机**关 WiFi、用流量**打开 `https://你的域名/abcd/`，
+   应显示"这串密钥打不开任何一道门"（而不是超时）；
+2. 用多节点工具从各省测一遍（例如 itdog.cn 的 HTTP 测试），确认大部分省份能拿到 200；
+3. 全部通过后，把 `https://你的域名/狂奔在沙漠中暴雨下` 这类链接发给寿星即可。
 
 ## 已知取舍
 
