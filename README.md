@@ -100,17 +100,33 @@ pnpm dlx wrangler pages deploy public
 # 或者在 Dashboard 里新建 Pages 项目，把 public 目录拖进去
 ```
 
-方式二 · 连接 Git 仓库：
+方式二 · 连接 Git 仓库（推荐，本仓库已经建好）：
 
-```bash
-git init && git add . && git commit -m "生日解密站"   # 推到 GitHub / GitLab 后，在 Pages 里选这个仓库
-```
+仓库地址：<https://github.com/lkrkerry1/LCR-Birthday>（当前是 **public**，见下面的取舍）
+
+在 Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git，选这个仓库后填：
 
 - Framework preset：`None`
 - Build command：**留空**
 - Build output directory：`public`
 
-改完内容重新部署即可（改 `public/levels.js`，push 或重新上传）。
+之后每次 `git push` 到 `main` 都会自动重新部署，改 `public/levels.js` 就是改关卡内容。
+
+提交署名已经在仓库里设好了（只对这个仓库生效，不动你的全局配置）：
+
+```bash
+git log -1 --format='%an <%ae>'      # → lkrkerry1 <152617246+lkrkerry1@users.noreply.github.com>
+```
+
+另外为了在这台机器上能连上 GitHub，仓库配置里加了两项（都在 `.git/config`，不影响别的项目）：
+`http.sslBackend=openssl`（这里的 schannel 会报 `SEC_E_NO_CREDENTIALS`）和
+`credential.interactive=false`（避免弹出凭据窗口卡住命令行）。
+
+想把这个仓库改成私有（Cloudflare Pages 连私有仓库完全没问题）：
+
+```bash
+gh repo edit lkrkerry1/LCR-Birthday --visibility private --accept-visibility-change-consequences
+```
 
 部署后核对四件事：
 
