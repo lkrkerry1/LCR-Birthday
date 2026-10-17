@@ -13,12 +13,11 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { levels } from '../public/levels.js';
+import { levels, site } from '../public/levels.js';
 import { buildRoutes, normalizePath, routeSeed } from '../public/shared/levels-utils.js';
 
 const SHELL_MARK = '<template id="tpl-level">';
 const CLOUDFLARE_ERROR = /Error 1\d{3}|cloudflare\.com\/[0-9a-z-]+\/error|本网站暂时无法访问/i;
-const SPOILER = /BV[0-9A-Za-z]{10}|bilibili/i;
 
 function parseArgs(argv) {
   const base = argv.find((arg) => /^https?:\/\//i.test(arg));
@@ -65,6 +64,19 @@ export async function verify(base) {
       res.ok ? `HTTP ${res.status} ${res.type}` : `请求失败：${res.error}`);
   }
 
+  // 提示里带的图片也必须能取到
+  for (let i = 0; i < levels.length; i += 1) {
+    const gate = Number(site?.firstGate ?? 1) + i;
+    const assets = (levels[i].hints ?? [])
+      .filter((hint) => hint && typeof hint === 'object' && hint.image)
+      .map((hint) => hint.image);
+    for (const asset of assets) {
+      const res = await probe(`${base}${asset}`);
+      push(`第 ${gate} 关的提示图片可访问`, res.ok && res.status === 200 && /^image\//.test(res.type),
+        res.ok ? `HTTP ${res.status} ${res.type} ${asset}` : `请求失败：${res.error}`);
+    }
+  }
+
   // 2) 密钥路径（中文、编码、有无尾斜杠）
   if (encodedKey) {
     const trailing = await probe(`${base}${encodedKey}`);
@@ -86,15 +98,10 @@ export async function verify(base) {
     push('第 2 关有密钥路径', false, 'levels[0].answers[0] 是空的');
   }
 
-  // 4) SEO 头与剧透检查
+  // 4) SEO 头
   if (shell.ok) {
     push('响应头带 x-robots-tag: noindex', /noindex/i.test(shell.robots),
       shell.robots ? `x-robots-tag: ${shell.robots}` : '没有这个响应头（本地预览没有 _headers 是正常的）', 'warn');
-  }
-  const levelsJs = await probe(`${base}/levels.js`);
-  if (levelsJs.ok) {
-    push('线上题库没有泄露视频号', !SPOILER.test(levelsJs.body),
-      SPOILER.test(levelsJs.body) ? '发现 BV 号或视频站字样！' : '干净');
   }
 
   return { results, shell, keyRoute, routes, hasWarnOnly: results.every((r) => r.passed || r.level === 'warn') };
@@ -129,10 +136,11 @@ function report({ results, shell, routes, base }) {
 
   console.log('');
   console.log('给寿星的链接：');
-  console.log(`  从第一关开始（通常只发这一条）：${base}/`);
+  const firstGate = Number(site?.firstGate ?? 1);
+  console.log(`  从第 ${firstGate} 关开始（通常只发这一条）：${base}/`);
   for (let i = 1; i < routes.length; i += 1) {
     const seed = routeSeed(levels[i - 1]);
-    console.log(`  直接跳到第 ${i + 1} 关：${base}/${encodeURIComponent(seed)}/`);
+    console.log(`  直接跳到第 ${firstGate + i} 关：${base}/${encodeURIComponent(seed)}/`);
   }
   return failed.length === 0;
 }

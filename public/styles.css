@@ -56,31 +56,6 @@ body {
   gap: clamp(1.2rem, 3vw, 2rem);
 }
 
-/* ── 页头 ───────────────────────────────────────────── */
-.head {
-  text-align: center;
-}
-
-.head-title {
-  margin: 0;
-  font-size: clamp(1.5rem, 5vw, 2.1rem);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
-.head-sub {
-  margin: 0.5rem 0 0;
-  color: var(--gold);
-  font-size: clamp(0.9rem, 2.4vw, 1rem);
-  letter-spacing: 0.16em;
-}
-
-.head-intro {
-  margin: 0.75rem 0 0;
-  color: var(--text-faint);
-  font-size: 0.88rem;
-}
-
 /* ── 卡片 ───────────────────────────────────────────── */
 .card {
   position: relative;
@@ -119,13 +94,6 @@ body {
   letter-spacing: 0.12em;
 }
 
-.chip-warn {
-  border-color: rgba(232, 185, 106, 0.45);
-  background: var(--gold-soft);
-  color: var(--gold);
-  letter-spacing: 0.06em;
-}
-
 .level-title,
 .locked-title,
 .letter-title {
@@ -146,6 +114,17 @@ body {
   border-radius: 14px;
   background: rgba(232, 185, 106, 0.05);
   padding: 0.9rem 1rem 1.05rem;
+  margin-top: 0.35rem;
+}
+
+.hint-image {
+  display: block;
+  width: 100%;
+  max-width: 26rem;
+  height: auto;
+  margin: 0.55rem auto 0;
+  border: 1px solid var(--card-edge);
+  border-radius: 12px;
 }
 
 .cipher-bar {
@@ -258,6 +237,54 @@ body {
 
 .msg.is-bad {
   color: var(--bad);
+}
+
+/* ── 分级提示 ───────────────────────────────────────── */
+.hint-box {
+  margin-top: 1rem;
+}
+
+.hint-btn {
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+}
+
+.hint-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  color: var(--text-faint);
+}
+
+.hint-list {
+  margin: 0.9rem 0 0;
+  padding-left: 1.35rem;
+  color: var(--text-dim);
+  font-size: 0.94rem;
+}
+
+.hint-list:empty {
+  display: none;
+}
+
+.hint-item {
+  margin: 0.45rem 0;
+  line-height: 1.85;
+  animation: hintIn 0.35s ease both;
+}
+
+.hint-item::marker {
+  color: var(--gold);
+}
+
+@keyframes hintIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ── 过渡：新密钥 ───────────────────────────────────── */

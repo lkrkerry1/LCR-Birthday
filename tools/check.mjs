@@ -60,6 +60,10 @@ const PLACEHOLDER_PATTERN = /【示例|待替换|待你填写|示例关卡|DEMO-
 
 const isText = (value) => typeof value === 'string' && value.trim() !== '';
 
+/** 全局编号：第 1 关是洛谷题，网站从第 2 关开始（site.firstGate）。 */
+const FIRST_GATE = Number(site?.firstGate ?? 1);
+const gateNo = (index) => FIRST_GATE + index;
+
 /** 极简 JSONC 解析：去掉注释与尾随逗号。这份配置是我们自己写的，够用即可。 */
 function parseJsonc(text) {
   try {
@@ -80,8 +84,11 @@ export function check({ allowDemo = false } = {}) {
   const warn = (message) => warnings.push(message);
 
   // ── 站点文案 ───────────────────────────────────────────────
-  for (const key of ['title', 'subtitle', 'wrongAnswer', 'unlocked', 'finalUnlocked', 'notFoundTitle', 'notFoundHint']) {
+  for (const key of ['wrongAnswer', 'unlocked', 'finalUnlocked', 'notFoundTitle', 'notFoundHint']) {
     if (!isText(site?.[key])) error(`site.${key} 不能为空`);
+  }
+  if (site?.firstGate !== undefined && (!Number.isInteger(site.firstGate) || site.firstGate < 1)) {
+    error('site.firstGate 必须是 ≥1 的整数（网站第一道门的全局编号）');
   }
 
   // ── 关卡基本字段 ───────────────────────────────────────────
@@ -92,9 +99,10 @@ export function check({ allowDemo = false } = {}) {
 
   const demoLevels = [];
   levels.forEach((level, index) => {
-    const where = `第 ${index + 1} 关`;
-    for (const key of ['label', 'face', 'cipherText']) {
-      if (!isText(level?.[key])) error(`${where} 缺少 ${key}`);
+    const where = `第 ${gateNo(index)} 关`;
+    if (!isText(level?.title)) error(`${where} 缺少 title`);
+    if (!isText(level?.cipherText) && !isText(level?.face)) {
+      error(`${where} 至少要给出 cipherText（密文）或 face（题面文字）`);
     }
     if (!Array.isArray(level?.answers) || level.answers.length === 0) {
       error(`${where} 至少要有一个答案（answers）`);
@@ -110,6 +118,33 @@ export function check({ allowDemo = false } = {}) {
       }
     });
 
+    if (!Array.isArray(level?.hints)) {
+      error(`${where} 缺少 hints（分级提示至少一条）`);
+    } else {
+      if (level.hints.length === 0) {
+        error(`${where} 的 hints 至少要有一条`);
+      }
+      level.hints.forEach((hint, hintIndex) => {
+        const at = `${where} 第 ${hintIndex + 1} 条提示`;
+        if (typeof hint === 'string') {
+          if (!isText(hint)) error(`${at}是空的`);
+          return;
+        }
+        if (hint && typeof hint === 'object') {
+          if (!isText(hint.text) && !isText(hint.image)) error(`${at}既没有文字也没有图片`);
+          if (isText(hint.image)) {
+            const imagePath = String(hint.image).replace(/^\//, '');
+            if (!existsSync(join(PUBLIC_DIR, imagePath))) {
+              error(`${at}的图片不存在：public/${imagePath}`);
+            }
+          }
+          return;
+        }
+        error(`${at}格式不对（字符串，或 { image: '/images/xxx.png' }）`);
+      });
+      if (level.hints.length > 0) notes.push(`${where} 有 ${level.hints.length} 条分级提示`);
+    }
+
     const seed = routeSeed(level);
     if (isText(seed)) {
       if (seed.includes('/')) error(`${where} 的首个答案里有 “/”，会把网址切断，换一个说法`);
@@ -118,7 +153,7 @@ export function check({ allowDemo = false } = {}) {
     }
 
     if (level.demo) demoLevels.push(index);
-    const placeholders = ['face', 'cipherText'].filter((key) => PLACEHOLDER_PATTERN.test(String(level[key] ?? '')));
+    const placeholders = ['cipherText'].filter((key) => PLACEHOLDER_PATTERN.test(String(level[key] ?? '')));
     if (placeholders.length > 0 && !level.demo) {
       warn(`${where} 的 ${placeholders.join(' / ')} 看起来还是示例内容，但没标 demo`);
     }
@@ -132,7 +167,7 @@ export function check({ allowDemo = false } = {}) {
   const routes = buildRoutes(levels);
   routes.forEach((route, index) => {
     if (route === null) {
-      error(`第 ${index + 1} 关没有网址：上一关（第 ${index} 关）的首个答案不能为空`);
+      error(`第 ${gateNo(index)} 关没有网址：上一关（第 ${gateNo(index - 1)} 关）的首个答案不能为空`);
     }
   });
 
@@ -141,17 +176,17 @@ export function check({ allowDemo = false } = {}) {
     if (route === null) return;
     const normalized = normalizePath(route);
     if (seen.has(normalized)) {
-      error(`第 ${index + 1} 关的网址 ${normalized} 和第 ${seen.get(normalized) + 1} 关撞车了，改掉其中一个答案`);
+      error(`第 ${gateNo(index)} 关的网址 ${normalized} 和第 ${gateNo(seen.get(normalized))} 关撞车了，改掉其中一个答案`);
     } else {
       seen.set(normalized, index);
     }
     if (normalized === '/') {
-      if (index !== 0) error(`第 ${index + 1} 关的网址是 '/'，只有第 1 关能占这个位置`);
+      if (index !== 0) error(`第 ${gateNo(index)} 关的网址是 '/'，只有网站的起始门能占这个位置`);
       return;
     }
     const core = normalized.replace(/^\/+|\/+$/g, '').toLowerCase();
     if (RESERVED_NAMES.includes(core)) {
-      error(`第 ${index + 1} 关的网址 /${core}/ 和站点自己的文件重名，换一个答案`);
+      error(`第 ${gateNo(index)} 关的网址 /${core}/ 和站点自己的文件重名，换一个答案`);
     }
   });
 
@@ -162,7 +197,7 @@ export function check({ allowDemo = false } = {}) {
       const a = normalizePath(routes[i]);
       const b = normalizePath(routes[j]);
       if (i < j && a !== b && a.includes(b)) {
-        warn(`第 ${i + 1} 关的网址 ${a} 里含有第 ${j + 1} 关的网址 ${b}，被截断的链接可能认错门`);
+        warn(`第 ${gateNo(i)} 关的网址 ${a} 里含有第 ${gateNo(j)} 关的网址 ${b}，被截断的链接可能认错门`);
       }
     }
   }
@@ -192,13 +227,13 @@ export function check({ allowDemo = false } = {}) {
       const route = routes[index];
       const current = route === null ? null : normalizePath(route);
       if (index > 0 && matchLevel(levels, route)?.index !== index) {
-        error(`直接打开 ${current} 没能进入第 ${index + 1} 关`);
+        error(`直接打开 ${current} 没能进入第 ${gateNo(index)} 关`);
       }
 
       const seed = routeSeed(level);
       const hit = matchedAnswer(level, `我听到的是「${seed}」`);
       if (hit === null) {
-        error(`第 ${index + 1} 关的答案「${seed}」通不过自己的判定`);
+        error(`第 ${gateNo(index)} 关的答案「${seed}」通不过自己的判定`);
       }
 
       const isLast = index === levels.length - 1;
@@ -208,7 +243,7 @@ export function check({ allowDemo = false } = {}) {
         const nextRoute = routes[index + 1];
         const landed = nextRoute === null ? null : matchLevel(levels, nextRoute);
         if (landed?.index !== index + 1) {
-          error(`第 ${index + 1} 关的答案「${seed}」没能落到第 ${index + 2} 关`);
+          error(`第 ${gateNo(index)} 关的答案「${seed}」没能落到第 ${gateNo(index + 1)} 关`);
         }
         walk.push({ from: current, answer: seed, to: nextRoute === null ? '（没有网址）' : normalizePath(nextRoute) });
       }
@@ -220,7 +255,7 @@ export function check({ allowDemo = false } = {}) {
   for (let i = 1; i < levels.length; i += 1) {
     const previousSeed = routeSeed(levels[i - 1]);
     if (answerMatches(levels[i], previousSeed)) {
-      warn(`第 ${i + 1} 关的答案判定会被上一关的答案「${previousSeed}」直接放行，等于少了一道门`);
+      warn(`第 ${gateNo(i)} 关的答案判定会被上一关的答案「${previousSeed}」直接放行，等于少了一道门`);
     }
   }
   for (const level of levels) {
@@ -272,10 +307,11 @@ export function check({ allowDemo = false } = {}) {
   const pending = [];
   for (const index of demoLevels) {
     const level = levels[index];
-    const placeholders = ['face', 'cipherText']
+    const placeholders = ['cipherText']
       .filter((key) => PLACEHOLDER_PATTERN.test(String(level[key] ?? '')))
+      .concat((level.hints ?? []).some((hint) => PLACEHOLDER_PATTERN.test(String(hint))) ? ['hints'] : [])
       .concat(PLACEHOLDER_PATTERN.test(routeSeed(level)) ? ['answers'] : []);
-    pending.push(`第 ${index + 1} 关：${placeholders.length > 0 ? placeholders.join(' / ') : '标记为 demo'} 还是示例内容`);
+    pending.push(`第 ${gateNo(index)} 关：${placeholders.length > 0 ? placeholders.join(' / ') : '标记为 demo'} 还是示例内容`);
   }
   if (Array.isArray(reveal?.paragraphs) && reveal.paragraphs.some((p) => PLACEHOLDER_PATTERN.test(String(p)))) {
     pending.push('生日信正文：还是示例内容');
@@ -298,12 +334,12 @@ function printReport({ errors, warnings, notes, routes, walk }) {
   console.log('生日解密站 · 配置自检');
   console.log(line);
 
-  console.log('关卡与网址');
+  console.log('关卡与网址（全局编号；第 1 关在洛谷上）');
   levels.forEach((level, index) => {
     const route = routes[index] === null ? '（没有网址）' : normalizePath(routes[index]);
     const marks = [];
     if (level.demo) marks.push('示例');
-    console.log(`  ${index + 1}. ${level.label ?? '（缺 label）'}  →  ${route}${marks.length ? `  [${marks.join('/')}]` : ''}`);
+    console.log(`  ${gateNo(index)}. ${level.title ?? '（缺 title）'}  →  ${route}${marks.length ? `  [${marks.join('/')}]` : ''}`);
   });
 
   console.log('揭晓页');

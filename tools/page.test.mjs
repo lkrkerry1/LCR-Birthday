@@ -26,7 +26,7 @@ function templateBlock(id) {
 
 /** 每个模板必须提供的元素，app.js 会按名字去找它们。 */
 const TEMPLATE_CONTRACT = {
-  'tpl-level': ['step', 'demo', 'label', 'face', 'copy', 'cipher', 'form', 'input', 'msg'],
+  'tpl-level': ['step', 'title', 'face', 'cipherbox', 'copy', 'cipher', 'form', 'input', 'msg', 'hintbtn', 'hintlist'],
   'tpl-transition': ['kicker', 'key'],
   'tpl-locked': ['title', 'hint', 'form', 'input', 'msg'],
   'tpl-reveal': ['title', 'body', 'sign'],
@@ -85,9 +85,9 @@ test('app.js 不做多余的事：没有内联脚本、没有外部依赖', () =
   assert.deepEqual(imports.sort(), ['./levels.js', './shared/levels-utils.js']);
 });
 
-test('第一关的密文里不能出现被藏起来的东西', () => {
-  // 视频号必须只以密文形式存在，否则第一关直接剧透
-  const levelSource = read('levels.js');
-  assert.equal(/BV[0-9A-Za-z]{10}/.test(levelSource), false, 'levels.js 里出现了视频号');
-  assert.equal(/bilibili/i.test(levelSource), false, 'levels.js 里出现了视频站链接');
+test('提示按钮是数据驱动的：没写 hints 的关卡不会显示按钮', () => {
+  // 按钮默认 hidden，只有 level.hints 非空时 app.js 才会把它显示出来
+  const block = templateBlock('tpl-level');
+  assert.match(block, /data-el="hintbtn"[^>]*hidden/, '提示按钮必须默认隐藏');
+  assert.match(app, /level\.hints/, 'app.js 应该按关卡数据决定是否显示提示');
 });

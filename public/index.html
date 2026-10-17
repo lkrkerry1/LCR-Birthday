@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="color-scheme" content="dark" />
-    <title>解密 · 生日计划</title>
+    <title>解密</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -13,12 +13,6 @@
     <div class="glow" aria-hidden="true"></div>
 
     <div class="page">
-      <header class="head">
-        <h1 class="head-title" id="site-title"></h1>
-        <p class="head-sub" id="site-subtitle"></p>
-        <p class="head-intro" id="site-intro"></p>
-      </header>
-
       <main class="view" id="view"></main>
 
       <footer class="foot">
@@ -31,11 +25,10 @@
       <section class="card card-level">
         <div class="row-between">
           <span class="chip" data-el="step"></span>
-          <span class="chip chip-warn" data-el="demo" hidden>示例关卡（待替换）</span>
         </div>
-        <h2 class="level-title" data-el="label"></h2>
-        <p class="face" data-el="face"></p>
-        <div class="cipher">
+        <h2 class="level-title" data-el="title"></h2>
+        <p class="face" data-el="face" hidden></p>
+        <div class="cipher" data-el="cipherbox">
           <div class="cipher-bar">
             <span class="cipher-tag">密文</span>
             <button class="ghost-btn" type="button" data-el="copy">复制</button>
@@ -60,6 +53,10 @@
           <button class="primary-btn" type="submit">开门</button>
         </form>
         <p class="msg" data-el="msg" role="status" aria-live="polite"></p>
+        <div class="hint-box">
+          <button class="ghost-btn hint-btn" type="button" data-el="hintbtn" hidden>给一条提示</button>
+          <ol class="hint-list" data-el="hintlist" aria-live="polite"></ol>
+        </div>
       </section>
     </template>
 

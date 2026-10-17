@@ -13,6 +13,9 @@ import { answerMatches, buildRoutes, matchLevel, normalizePath, routeSeed } from
 
 const ROUTES = buildRoutes(levels);
 const LAST_INDEX = levels.length - 1;
+// 全局编号：第 1 关在洛谷上，网站从第 2 关开始（site.firstGate）
+const FIRST_GATE = Number(site.firstGate ?? 1);
+const TOTAL_GATES = FIRST_GATE + LAST_INDEX;
 const TRANSITION_MS = 700;
 
 const view = document.getElementById('view');
@@ -73,6 +76,53 @@ function focusInput(input) {
   }, 80);
 }
 
+/** 把一条提示渲染成 <li>：字符串就是文字，{ image } 就是一张图（可以再带 text）。 */
+function buildHintItem(entry) {
+  const item = document.createElement('li');
+  item.className = 'hint-item';
+  if (typeof entry === 'string') {
+    item.textContent = entry;
+    return item;
+  }
+  if (entry?.text) {
+    const text = document.createElement('span');
+    text.textContent = entry.text;
+    item.append(text);
+  }
+  if (entry?.image) {
+    const image = document.createElement('img');
+    image.className = 'hint-image';
+    image.src = entry.image;
+    image.alt = entry.imageAlt ?? '';
+    image.loading = 'lazy';
+    item.append(image);
+  }
+  return item;
+}
+
+/** 分级提示：点一次给一条，已经给出的留在页面上不消失。 */
+function setupHints(root, level) {
+  const button = pick(root, 'hintbtn');
+  const list = pick(root, 'hintlist');
+  const hints = Array.isArray(level.hints) ? level.hints : [];
+  if (hints.length === 0) return;
+
+  let shown = 0;
+  button.hidden = false;
+  button.textContent = '给一条提示';
+  button.addEventListener('click', () => {
+    if (shown >= hints.length) return;
+    list.append(buildHintItem(hints[shown]));
+    shown += 1;
+    if (shown >= hints.length) {
+      button.disabled = true;
+      button.textContent = '提示已经全部给完了';
+    } else {
+      button.textContent = `还要提示（已给 ${shown} / ${hints.length}）`;
+    }
+  });
+}
+
 /** 把同学粘进来的东西变成路径：整条链接也认。 */
 function toPath(raw) {
   const text = String(raw ?? '').trim();
@@ -122,22 +172,30 @@ function showTransition({ kicker, key, done }) {
   transitionTimer = window.setTimeout(done, TRANSITION_MS);
 }
 
-function renderLevel(hit, { dev }) {
+function renderLevel(hit) {
   const { index, level } = hit;
   const fragment = cloneTemplate('tpl-level');
   const card = fragment.querySelector('.card');
   const input = pick(fragment, 'input');
   const message = pick(fragment, 'msg');
 
-  pick(fragment, 'step').textContent = `第 ${index + 1} / ${levels.length} 道门`;
-  pick(fragment, 'label').textContent = level.label;
-  pick(fragment, 'face').textContent = level.face;
-  pick(fragment, 'cipher').textContent = level.cipherText;
-  pick(fragment, 'demo').hidden = !(dev && level.demo);
+  pick(fragment, 'step').textContent = `第 ${FIRST_GATE + index} / ${TOTAL_GATES} 关`;
+  pick(fragment, 'title').textContent = level.title;
+  if (level.face) {
+    const face = pick(fragment, 'face');
+    face.textContent = level.face;
+    face.hidden = false;
+  }
 
-  pick(fragment, 'copy').addEventListener('click', (event) => {
-    copyText(level.cipherText, event.currentTarget);
-  });
+  // 谜面可以是密文（没有就整块藏起来）
+  if (level.cipherText) {
+    pick(fragment, 'cipher').textContent = level.cipherText;
+    pick(fragment, 'copy').addEventListener('click', (event) => {
+      copyText(level.cipherText, event.currentTarget);
+    });
+  } else {
+    pick(fragment, 'cipherbox').hidden = true;
+  }
 
   attachSubmit({
     form: pick(fragment, 'form'),
@@ -147,9 +205,11 @@ function renderLevel(hit, { dev }) {
     onSubmit: () => submitAnswer({ index, level, raw: input.value, card, message }),
   });
 
+  setupHints(fragment, level);
+
   view.replaceChildren(fragment);
-  document.title = `${level.label} · ${site.title}`;
-  footNote.textContent = `第 ${index + 1} / ${levels.length} 道门`;
+  document.title = level.title;
+  footNote.textContent = '';
   copyLink.hidden = false;
   focusInput(input);
 }
@@ -217,8 +277,8 @@ function renderReveal() {
   else signature.hidden = true;
 
   view.replaceChildren(fragment);
-  document.title = `${reveal.title} · ${site.title}`;
-  footNote.textContent = '三道门都开了。';
+  document.title = reveal.title;
+  footNote.textContent = `全部 ${TOTAL_GATES} 道门都开了。`;
   copyLink.hidden = false;
 }
 
@@ -252,7 +312,7 @@ function renderLocked() {
   });
 
   view.replaceChildren(fragment);
-  document.title = `${site.notFoundTitle} · ${site.title}`;
+  document.title = site.notFoundTitle;
   footNote.textContent = '';
   copyLink.hidden = true;
   focusInput(input);
@@ -277,12 +337,8 @@ function render() {
     renderReveal();
     return;
   }
-  renderLevel(hit, { dev: query.get('dev') === '1' });
+  renderLevel(hit);
 }
-
-document.getElementById('site-title').textContent = site.title;
-document.getElementById('site-subtitle').textContent = site.subtitle;
-document.getElementById('site-intro').textContent = site.intro ?? '';
 
 copyLink.addEventListener('click', () => copyText(location.href, copyLink));
 window.addEventListener('popstate', render);

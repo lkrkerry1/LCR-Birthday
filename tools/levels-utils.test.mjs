@@ -121,7 +121,7 @@ test('matchLevel：配置缺答案时不会把 "/" 当成有效路由', () => {
 
 test('真实题库：第一关能解开，并落到 /狂奔在沙漠中暴雨下/', () => {
   assert.equal(levels.length >= 1, true);
-  assert.equal(site.title.length > 0, true);
+  assert.equal(Number.isInteger(site.firstGate), true);
   assert.equal(reveal.paragraphs.length > 0, true);
 
   assert.equal(answerMatches(levels[0], ANSWER_1), true);
@@ -143,7 +143,7 @@ test('真实题库：从第 1 关出发能一路走到揭晓（不跳过任何�
     assert.ok(nextRoute, `第 ${index + 2} 关没有网址（答案是否为空？）`);
     const hit = matchLevel(levels, nextRoute);
     assert.equal(hit?.index, index + 1, `${nextRoute} 没能解析到第 ${index + 2} 关`);
-    walked.push(`${level.label} → ${nextRoute}`);
+    walked.push(`${level.title} → ${nextRoute}`);
     index = hit.index;
   }
   assert.equal(walked.length, levels.length - 1);
