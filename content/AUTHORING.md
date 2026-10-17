@@ -70,12 +70,13 @@ node tools/cipher.mjs caesar --text "BV1qh4y1x7Zk" --shift 4
 **`hints`（必填，至少一条）** 就是页面下方的「给一条提示」按钮：点一次给一条，已经给出的**留在页面上不消失**，
 一条条往下追加，给完按钮就变灰。数组顺序 = 从含蓄到直白的递进顺序。
 
-**`face`（可选）** 是显示在标题下面的题面文字（第三关的就是 `lhy`）。`cipherText` 和 `face` **至少要有一个**，
-否则卡片上什么谜面都没有。没写 `cipherText` 的关卡，密文框会自动隐藏。
+**`face`（可选）** 是显示在标题下面的**题面文字**（第三关的 `lhy` 是当密文放的，所以没用它）。
+`cipherText` 和 `face` **至少要有一个**，否则卡片上什么谜面都没有。没写 `cipherText` 的关卡，密文框会自动隐藏。
 
-**提示项可以是图片**：在 `hints` 里写 `{ image: '/images/gate-3.png' }`（文件放进 `public/images/`），
+**提示项可以是图片**：在 `hints` 里写 `{ image: '/images/gate-3.webp' }`（文件放进 `public/images/`），
 点到这一条时才会把图片显示出来——适合"看图猜字"这种要逐步揭图的谜题。也可以写成
-`{ text: '看图', image: '/images/gate-3.png' }`，让文字和图片同时出现。
+`{ text: '看图', image: '/images/gate-3.webp' }`，让文字和图片同时出现。
+图片建议用 WebP 压一下（第三关那张原图 1.1 MB，压成 832px WebP 后只有 71 KB，肉眼无差别）。
 `check.mjs` 会检查图片文件是否存在，`tools/verify-deploy.mjs` 会检查线上图片能不能取到。
 
 卡片上**不再单独显示谜面**——`hints[0]` 就是谜面，所以第一条要写成"看不懂密文时希望有人说的那句话"。

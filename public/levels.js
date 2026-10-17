@@ -44,13 +44,13 @@ export const levels = [
   },
   {
     title: '寻觅偏僻',
-    // 题面：平时显示在标题下面
-    face: 'lhy',
+    // 和第二关一样，这里摆的是一串密文
+    cipherText: 'lhy',
     answers: ['瘳'],
     // 提示项可以是字符串，也可以是 { image: '...' }——图片放在 public/images/ 下
     hints: [
       '拼装交织带来指引，而答案源于己身',
-      { image: '/images/gate-3.png' },
+      { image: '/images/gate-3.webp' },
       '一个字',
       '病字头',
       '答案是：瘳',
